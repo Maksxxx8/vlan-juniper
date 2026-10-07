@@ -4,14 +4,91 @@ import json
 from datetime import datetime
 from netmiko import ConnectHandler
 
+def load_env_file(filepath=".env"):
+    """
+    Загружает переменные окружения из .env файла.
+    Работает со стандартной библиотекой, даже если python-dotenv не установлен.
+    """
+    if not os.path.exists(filepath):
+        return
+
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(filepath)
+        return
+    except ImportError:
+        pass
+
+    with open(filepath, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, val = line.split("=", 1)
+            key = key.strip()
+            val = val.strip().strip("'\"")
+            if key not in os.environ:
+                os.environ[key] = val
+
+
+ENV_FILE = os.path.join(os.path.dirname(__file__), ".env")
+load_env_file(ENV_FILE)
+
 DEVICE = {
     "device_type": "juniper_junos",
-    "host": "10.10.100.205",      # IP вашего QFX 
-    "username": "admin",            # имя пользователя
-    "use_keys": True,              # использование SSH-ключа
-    "key_file": "/home/user/.ssh/id_rsa", # ключ SSH
-    "disabled_algorithms": {"pubkeys": ["rsa-sha2-256", "rsa-sha2-512"]},
+    "host": os.getenv("JUNIPER_HOST", "127.0.0.1"),
+    "username": os.getenv("JUNIPER_USER", "admin"),
+    "port": int(os.getenv("JUNIPER_PORT", "22")),
+    "use_keys": os.getenv("JUNIPER_USE_KEYS", "True").lower() in ("true", "1", "yes"),
 }
+
+_key_file = os.getenv("JUNIPER_KEY_FILE")
+if _key_file:
+    DEVICE["key_file"] = os.path.expanduser(_key_file)
+
+_password = os.getenv("JUNIPER_PASSWORD")
+if _password:
+    DEVICE["password"] = _password
+
+
+def get_connection_params():
+    """
+    Формирует словарь параметров для ConnectHandler с автоматической проверкой
+    совместимости версий Netmiko и Paramiko.
+    Устраняет ошибку TypeError в BaseConnection.__init__ на старых версиях Netmiko (< 4.0).
+    """
+    import inspect
+    from netmiko.base_connection import BaseConnection
+
+    params = dict(DEVICE)
+    disabled_algs = {"pubkeys": ["rsa-sha2-256", "rsa-sha2-512"]}
+
+    # Проверяем, поддерживает ли установленный Netmiko аргумент disabled_algorithms
+    if "disabled_algorithms" in inspect.signature(BaseConnection.__init__).parameters:
+        params["disabled_algorithms"] = disabled_algs
+    else:
+        # Для старых версий Netmiko (< 4.0, например системный пакет в Debian/Ubuntu):
+        # Удаляем неподдерживаемый аргумент из параметров конструктора
+        params.pop("disabled_algorithms", None)
+
+        # Если установленный Paramiko поддерживает disabled_algorithms (версии 2.9+),
+        # безопасно добавляем его через monkey-patch метода _connect_params_dict
+        try:
+            import paramiko
+            if "disabled_algorithms" in inspect.signature(paramiko.SSHClient.connect).parameters:
+                orig_connect_params = BaseConnection._connect_params_dict
+
+                def patched_connect_params(self):
+                    conn_dict = orig_connect_params(self)
+                    conn_dict["disabled_algorithms"] = disabled_algs
+                    return conn_dict
+
+                BaseConnection._connect_params_dict = patched_connect_params
+        except Exception:
+            pass
+
+    return params
+
 
 EXCLUDE_FILE = os.path.join(os.path.dirname(__file__), "exclude_vlans.txt")
 
@@ -226,8 +303,9 @@ def parse_configured_vlans(config_data, vlans_data=None):
 
 def fetch_switch_data():
     """Подключается к коммутатору и забирает все необходимые данные за один сеанс."""
-    print(f"Подключение к {DEVICE['host']}...")
-    with ConnectHandler(**DEVICE) as conn:
+    conn_params = get_connection_params()
+    print(f"Подключение к {conn_params['host']} (пользователь: {conn_params.get('username')})...")
+    with ConnectHandler(**conn_params) as conn:
         print("Получение конфигурации VLAN...")
         config_raw = conn.send_command("show configuration vlans | display json")
         print("Получение операционной таблицы VLAN и портов...")

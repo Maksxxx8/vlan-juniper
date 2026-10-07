@@ -47,24 +47,33 @@ pip install netmiko
 
 ---
 
-## ⚙️ Настройка
+## ⚙️ Настройка (.env)
 
-Откройте файл `find_empty_vlans.py` и задайте параметры подключения в словаре `DEVICE`:
+Параметры подключения к оборудованию (IP, логин, пути к ключам, пароли) вынесены в файл конфигурации `.env`.  
+Файл `.env` **добавлен в `.gitignore`**, что предотвращает случайную утечку конфиденциальных корпоративных данных в репозиторий.
 
-```python
-DEVICE = {
-    "device_type": "juniper_junos",
-    "host": "10.10.100.200",               # IP-адрес вашего коммутатора
-    "username": "admin",                     # Логин SSH
-    "use_keys": True,                       # Использовать SSH-ключ
-    "key_file": "/home/user/.ssh/id_rsa",   # Путь к приватному SSH-ключу
-    # Для совместимости со старыми релизами Junos / OpenSSH:
-    "disabled_algorithms": {"pubkeys": ["rsa-sha2-256", "rsa-sha2-512"]},
-}
+1. Создайте `.env` из готового шаблона:
+```bash
+cp .env.example .env
+```
+
+2. Укажите ваши параметры в `.env`:
+```ini
+# IP-адрес коммутатора
+JUNIPER_HOST=10.10.100.200
+JUNIPER_PORT=22
+JUNIPER_USER=admin
+
+# Аутентификация по SSH-ключу:
+JUNIPER_USE_KEYS=True
+JUNIPER_KEY_FILE=/home/user/.ssh/id_rsa
+
+# Аутентификация по паролю (если без ключа):
+# JUNIPER_PASSWORD=secret_password
 ```
 
 > [!NOTE]
-> Параметр `disabled_algorithms` гарантирует корректную авторизацию по RSA-ключам даже на старых релизах Junos со встроенным OpenSSH 6.x.
+> Скрипт автоматически распознает версию установленной библиотеки `netmiko` (включая старые версии Netmiko < 4.0 из репозиториев Debian/Ubuntu) и обеспечивает совместимость со старыми релизами Junos / OpenSSH. Дополнительно устанавливать `python-dotenv` не обязательно — скрипт имеет встроенный парсер `.env`.
 
 ---
 
