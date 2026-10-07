@@ -6,10 +6,10 @@ from netmiko import ConnectHandler
 
 DEVICE = {
     "device_type": "juniper_junos",
-    "host": "192.168.55.205",      # IP вашего QFX 
-    "username": "Maks",            # имя пользователя
+    "host": "10.10.100.205",      # IP вашего QFX 
+    "username": "admin",            # имя пользователя
     "use_keys": True,              # использование SSH-ключа
-    "key_file": "/home/maks/.ssh/id_rsa", # ключ SSH
+    "key_file": "/home/user/.ssh/id_rsa", # ключ SSH
     "disabled_algorithms": {"pubkeys": ["rsa-sha2-256", "rsa-sha2-512"]},
 }
 
