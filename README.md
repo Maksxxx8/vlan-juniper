@@ -54,10 +54,10 @@ pip install netmiko
 ```python
 DEVICE = {
     "device_type": "juniper_junos",
-    "host": "192.168.55.200",               # IP-адрес вашего коммутатора
-    "username": "Maks",                     # Логин SSH
+    "host": "10.10.100.200",               # IP-адрес вашего коммутатора
+    "username": "admin",                     # Логин SSH
     "use_keys": True,                       # Использовать SSH-ключ
-    "key_file": "/home/maks/.ssh/id_rsa",   # Путь к приватному SSH-ключу
+    "key_file": "/home/user/.ssh/id_rsa",   # Путь к приватному SSH-ключу
     # Для совместимости со старыми релизами Junos / OpenSSH:
     "disabled_algorithms": {"pubkeys": ["rsa-sha2-256", "rsa-sha2-512"]},
 }
@@ -112,11 +112,8 @@ python3 find_empty_vlans.py
 VLAN ID    | VLAN NAME                 | DESCRIPTION
 ================================================================================
 65         | vlan65                    | BGP-sw204-sw42
-66         | vlan66                    | Flowspec-Wanguard
-125        | vlan125                   | Alef-QINQ
-126        | vlan126                   | Cogent_HK_4_Alef
-200        | vlan200                   | DTS
-1011       | vlan1011                  | Privat-Kiev-Hls
+126        | vlan126                   | Cogent
+200        | vlan200                   | home
 ...
 ================================================================================
 Всего пустых VLAN: 18
@@ -131,7 +128,7 @@ delete interfaces ae1 unit 0 family ethernet-switching vlan members 65
 delete interfaces et-0/0/17 unit 0 family ethernet-switching vlan members 65
 delete vlans vlan65
 
-# VLAN 125 (vlan125) - Alef-QINQ
+# VLAN 125 (vlan125) - test
 delete interfaces ae1 unit 0 family ethernet-switching vlan members 125
 delete interfaces et-0/0/17 unit 0 family ethernet-switching vlan members 125
 delete interfaces et-0/0/35 unit 0 family ethernet-switching vlan members 125
@@ -167,7 +164,7 @@ delete vlans vlan65
 
 # Команды для восстановления (ROLLBACK / ВЕРНУТЬ НАЗАД):
 set vlans vlan65 vlan-id 65
-set vlans vlan65 description "BGP-sw204-sw42"
+set vlans vlan65 description "test"
 set interfaces ae1 unit 0 family ethernet-switching vlan members 65
 set interfaces et-0/0/17 unit 0 family ethernet-switching vlan members 65
 ```
